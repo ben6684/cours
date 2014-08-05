@@ -1,0 +1,257 @@
+\documentclass[11pt,twoside,a4paper]{report}
+%=========================== En-Tete =================================
+%--- Insertion de paquetages (optionnel) ---
+\usepackage[french]{babel}   % pour dire que le texte est en franÃ§ais
+\usepackage{a4}              % pour la taille   
+\usepackage[latin1]{inputenc}     % pour les font postscript
+\usepackage[T1]{fontenc}
+\usepackage{mathptmx}
+\usepackage{amsmath} 
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{lmodern}
+\usepackage{listings}
+
+\begin{document}
+
+\title{''Cours BigData MapReduce, une étude de cas''}
+\author{''Benoit Petitpas''} 
+
+\maketitle
+
+
+\chapter{TP n°1}
+
+
+\section{Problématique}
+
+L'une des particularités des technologies BigData et notamment Hadoop est qu'elles reposent sur des information non-structurés stockées en HDFS (Hadoop File System) pour Hadoop. Or, il est courant de vouloir analyser les données en notre possession.\\
+Dans un DataWareHouse, pas de souci, le SQL est là pour nous aider. \\
+
+Dans notre cas, il serait souhaitable de pouvoir faire du requetage SQL sur des données non structurées. Car des données non-structurées ne peuvent être ni parcourues, ni analysées.\\
+
+\section{SQL pour les nuls}
+
+\subsection{Introduction}
+
+Il ne s'agit pas ici de faire un cours sur le SLQ mais plutôt de revoir les bases des commandes de manipulation de données. Les instructions de description de données seront passées sous silence.\\
+
+\subsection{Instructions en SQL}
+
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT * FROM table
+WHERE nom_champs operateur valeur
+GROUP BY nom_champs
+ORDER BY nom_champs;
+\end{lstlisting}
+
+Les instructions nécessaires pour faire de l'analyse de données sont :\\
+
+\begin{enumerate}
+\item $SELECT$ : Permet de selectionner des champs (ou pas : * selctionne tous les champs) ou de renvoyer des fonctions d'agrégats :
+\begin{itemize}
+\item $AVG(nom champs)$ : permet de calculer la valeur moyenne des valeurs contenues dans le champ.
+\item $COUNT(nom champs)$ : permet de calculer le nombre d'enregistrements (nombre de lignes)
+\item $MIN/MAX(nom champs)$ : permet de calculer la valeur minimale/maximale contenu dans le champs.
+\item $SUM(nom champs)$ : permet de calculer la somme des valeurs du champs.
+\end{itemize}
+\item WHERE : Permet de filtrer les enregistrements, c'est-à-dire qu'on va comparer les valeurs du champs avec une valeur. Par exemple : "nombre < 20". Les opérateurs de comparaison sont : "<, >, ==, IN, LIKE, ...". Chaque comparaison doit pouvoir renvoyer "VRAI" ou "FAUX". On peut aussi chainer les comparaison pour créer une comparaison, par exemple : "nombre < 20 AND nombre > 10". Les mots-clefs pour chainer sont "AND" et "OR".
+\item GROUP BY : permet de grouper plusieurs résultats et d'utiliser une fonction d'agrégat sur un groupe de résultats. Par exemple : une table qui contient toutes les ventes d'un magasin, il est possible de regrouper les ventes par clients identiques et d'obtenir le coût total des achats pour chaque client.
+\item ORDER BY : permet de trier les résultats.
+\end{enumerate} 
+
+\subsection{Exemple}
+
+Soit la table "client" suivante :\\
+
+\begin{tabular}{|c|c|c|c|}
+\hline
+nom & produit & prix & année\\
+\hline
+toto & a & 10 & 2014\\
+toto & b & 20 & 2014\\
+titi & a & 10 & 2013\\
+titi & c & 50 & 2012\\
+toto & a & 11 & 2013\\
+titi & a & 11 & 2013\\
+toto & d & 30 & 2014\\
+\hline
+\end{tabular}
+
+Des informations peuvent êtres extraites de cette table :
+
+\begin{enumerate}
+\item Afficher les produits vendus : \\
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT produit FROM client;\\
+\end{lstlisting}
+
+\item Afficher les ventes de plus de 15 euros:\\
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT prix FROM client
+WHERE prix > 15;\\
+\end{lstlisting}
+
+\item Afficher les ventes entre avant 2011 et après 2013:\\
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT * FROM client
+WHERE année < 2011 OR année > 2013;\\
+\end{lstlisting}
+(Si l'on met AND alors il faut qu'une année soit en même temps inférieur à 2011 et supérieur à 2013, ce qui est un ensemble nulle).
+
+\item Afficher les meilleurs ventes par client :\\
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT MAX(prix) FROM client
+GROUP BY nom;\\
+\end{lstlisting}
+
+\item Afficher le nombre de ventes de chaque produit:\\
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT COUNT(*) FROM client
+GROUP BY produit;\\
+\end{lstlisting}
+
+\item Afficher la somme des ventes suppérieures à 15 euros par année:\\
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT SUM(prix) FROM client
+WHERE prix > 15
+GROUP BY année;\\
+\end{lstlisting}
+\end{enumerate} 
+
+\section{Map-Reduce SQL}
+
+Même s'il existe des moyens de faire des requêtes en SQL sur des fichiers stockés en HDFS (Voir Hive), les requetes sur les données se feront par l'intermésiare d'algorithme Map-Reduce.\\
+Pour cela nous allons utiliser un fichier CSV de données de ventes assez simple contenant des lignes tel que l'on retrouve : nom,produit,prix\_vente,magasin,pays,mois,année.\\
+Nous allons donc tenter de faire du requetage sur ces données :
+
+\subsection{Exercice 1}
+
+Afficher toutes les informations. SQL : SELECT * FROM client;\\
+
+Indication : Pensez à ce que doivent être les clefs-valeurs en sortie du mapper.\\
+
+Le but est de prendre tous les éléments du fichier et de les afficher (en gardant les information de lignes...).\\
+
+\subsubsection{Corrigé}
+
+Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne devient une clef, la valeur est nulle car on ne compte rien en faire.\\
+
+Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef, car la valeur est nulle.\\
+
+\lstset{language=Python}
+\begin{lstlisting}
+
+# first thing to do is to load the lib
+from mrjob.job import MRJob
+# MRJob is a python class which will be overloaded
+
+
+class SQLSelect(MRJob):
+
+	# send the line as a key and no value
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			yield(l,None)
+
+	# and print it ... That's all folks 
+	def reducer(self, k, v):
+		print(k)
+
+
+if __name__ == '__main__':
+	#just run mapreduce 
+	SQLSelect.run()
+
+\end{lstlisting}
+
+\subsection{Exercice 2}
+
+Afficher les ventes :\\
+
+En SQL :
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT prix FROM client;\\
+\end{lstlisting}
+
+Indication : Même exercice que précedemment, sauf qu'un filtrage des information doit être effectué.\\
+Pour cela penser qu'une ligne peut être de nouveau séparé.
+
+\subsubsection{Corrigé}
+
+Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne est de nouveau séparer pour récupérer le prix qui devient la clef.\\
+
+Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef.\\
+
+\lstset{language=Python}
+\begin{lstlisting}
+
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+            # knowing that price is the third column, just take this value
+			yield(None,l.split(',')[2]) # the first element is 0
+
+	# and print it ... That's all folks 
+	def reducer(self, key, values):
+        for v in values: 
+            # values contains all the values, because they were all sorted to the None key
+		    print(v)
+
+
+\end{lstlisting}
+
+\subsection{Exercie 3}
+
+Afficher les prix de ventes :\\
+
+En SQL :
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT DISTINC prix FROM client;\\
+\end{lstlisting}
+
+Ici le mot clef DISTINCT permet d'éviter d'avoir des redondances d'information.\\
+
+Indication : pour réussir très facilement cet exercice, il faut avoir une bonne connaissance du processus MapReduce\\
+
+\subsubsection{Corrigé}
+
+Pour réussir, il suffit de se servir de l'étape de sorting entre map et reduce et du fait que les valeurs sont triées par clef, ainsi si les prix de ventes sont des clefs ... 
+\lstset{language=Python}
+\begin{lstlisting}
+	# send the line as a key and no value
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+            # knowing that price is the third column, just take this value
+			yield(l.split(',')[2],None) # the first element is 0
+
+	# and print it ... That's all folks 
+	def reducer(self, key, values):
+        print(k) # values contains a list of None values !
+
+\end{lstlisting}
+
+
+\subsection{Exercice 4}
+
+Afficher les ventes avant 2011:\\
+
+\lstset{language=SQL}
+\begin{lstlisting}
+SELECT * FROM client
+WHERE année < 2011;\\
+\end{lstlisting}
+
+Indication : ici, on reprend l'exercice 1 et on ajoute un filtrage sur les lignes et non plus les colonnes. Pour cela 
+
+
+\end{document}  
