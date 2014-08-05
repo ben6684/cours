@@ -143,6 +143,10 @@ Le but est de prendre tous les éléments du fichier et de les afficher (en gardan
 
 \subsubsection{Corrigé}
 
+Pour cela deux possibilités : \\
+
+\underline{1 solution : passer les informations comme clef}
+
 Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne devient une clef, la valeur est nulle car on ne compte rien en faire.\\
 
 Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef, car la valeur est nulle.\\
@@ -172,6 +176,63 @@ if __name__ == '__main__':
 	SQLSelect.run()
 
 \end{lstlisting}
+
+\underline{1 solution : passer les informations comme valeur}
+
+Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne devient une valeur, la clef est nulle car on ne compte rien en faire.\\
+
+Reduce : Récupère une clef nulle et une liste de valeur contenant toutes les lignes.\\
+
+\lstset{language=Python}
+\begin{lstlisting}
+
+# first thing to do is to load the lib
+from mrjob.job import MRJob
+# MRJob is a python class which will be overloaded
+
+
+class SQLSelect(MRJob):
+
+	# send the line as a key and no value
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			yield(None,l)
+
+	# and print it ... That's all folks 
+	def reducer(self, k, values):
+        for v in values:
+		    print(v)
+
+
+if __name__ == '__main__':
+	#just run mapreduce 
+	SQLSelect.run()
+
+\end{lstlisting}
+
+\subsubsection{Différences}
+
+En réalité, seule la deuxième solution correspond à la commande SQL demandée, car elle renverra TOUS les enregistrements. La solution en passant par les valeurs, implique que toutes les valeurs aient la même clefs et donc que chaque valeur soit ajoutée à la liste des valeurs récupérée par le reducer (unique puisqu'il n'y a qu'une seule clef). Le reducer passera chaque valeur en compte et le renverra.\\
+
+La première solution quand à elle ne répond pas vraiment à la demande car s'il existe une redondance des informations, ici une même vente effectuée, alors l'étape de sorting va regrouper les valeurs nulles sous une seule et même clef correspondant à l'information qui sera affichée.\\
+
+
+\begin{figure}[!h]
+\includegraphics[width=15cm]{tp1_exo1_val.png} 
+%\caption{Map, sort step with output of sorting step for the value oriented solution} 
+\caption{Etapes map et sort pour le cas où les informations sont envoyées via la valeur} 
+\label{tp1_exo1_val} 
+\end{figure} 
+
+\begin{figure}[!h]
+\includegraphics[width=15cm]{tp1_exo1_key.png} 
+%\caption{Map, sort step with output of sorting step for the value oriented solution} 
+\caption{Etapes map et sort pour le cas où les informations sont envoyées via la clef} 
+\label{tp1_exo1_key} 
+\end{figure} 
+
+On remarque qu'à la sortie de l'étape de triage, soit l'on obtient la liste des informations qui seront traitées dans un seul et unique reduceur, soit deux liste de valeurs nulle qui seront traités dans deux reduceurs différents.
+
 
 \subsection{Exercice 2}
 
@@ -251,7 +312,7 @@ SELECT * FROM client
 WHERE année < 2011;\\
 \end{lstlisting}
 
-Indication : ici, on reprend l'exercice 1 et on ajoute un filtrage sur les lignes et non plus les colonnes. Pour cela 
+Indication : ici, on reprend l'exercice 1 et on ajoute un filtrage sur les lignes et non plus les colonnes. Pour cela deux choix s'offrent à vous ... 
 
 
 \end{document}  
