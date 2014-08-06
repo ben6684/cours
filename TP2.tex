@@ -72,4 +72,24 @@ En Math :\\
 \overline{X} = \frac{1}{n} \sum_{i=1}^{n} x_i
 \end{align}
 
+Indication : Vous devez connaître la somme des prix ET le nombre de vente
+
+\subsubsection{Corrigé}
+
+Plusieurs solutions sont possibles : \\
+
+\begin{itemize}
+\item la première solution que je vois et d'envoyer en sortie du mapper la clef nulle, pour récupérer sur un seul reduceur la liste des valeurs. Ainsi il suffit de sommer les valeurs et de la diviser par la taille de la liste.\\
+
+\begin{lstlisting}
+def mapper()
+\end{lstlisting}
+
+\item La deuxième solution est d'utiliser un combiner, 
+
+\item La troisième est d'enchainer deux job map-rduce
+
+\end{itemize}
+
+
 \end{document}
