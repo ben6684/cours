@@ -12,8 +12,29 @@
 \usepackage{subfigure}
 \usepackage{lmodern}
 \usepackage{listings}
+\usepackage{xcolor}
+
+
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\definecolor{mygreen}{rgb}{0,0.6,0}
 
 \begin{document}
+\lstset{%
+backgroundcolor=\color{lightgray}, 
+basicstyle=\footnotesize,
+commentstyle=\color{mygreen},
+breaklines=true,
+frame=single,
+keepspaces=true,
+keywordstyle=\color{blue},
+language=Python,
+numbers=left,
+numbersep=5pt,
+numberstyle=\tiny\color{black},
+stringstyle=\color{mymauve}, 
+xleftmargin=\parindent,
+tabsize=3,
+}%
 
 \title{''Cours BigData MapReduce, une étude de cas''}
 \author{''Benoit Petitpas''} 
@@ -39,7 +60,6 @@ Il ne s'agit pas ici de faire un cours sur le SLQ mais plutôt de revoir les base
 
 \subsection{Instructions en SQL}
 
-\lstset{language=SQL}
 \begin{lstlisting}
 SELECT * FROM table
 WHERE nom_champs operateur valeur
@@ -84,46 +104,46 @@ Des informations peuvent êtres extraites de cette table :
 
 \begin{enumerate}
 \item Afficher les produits vendus : \\
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
-SELECT produit FROM client;\\
+SELECT produit FROM client;
 \end{lstlisting}
 
 \item Afficher les ventes de plus de 15 euros:\\
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
 SELECT prix FROM client
-WHERE prix > 15;\\
+WHERE prix > 15;
 \end{lstlisting}
 
 \item Afficher les ventes entre avant 2011 et après 2013:\\
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
 SELECT * FROM client
-WHERE année < 2011 OR année > 2013;\\
+WHERE année < 2011 OR année > 2013;
 \end{lstlisting}
 (Si l'on met AND alors il faut qu'une année soit en même temps inférieur à 2011 et supérieur à 2013, ce qui est un ensemble nulle).
 
 \item Afficher les meilleurs ventes par client :\\
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
 SELECT MAX(prix) FROM client
-GROUP BY nom;\\
+GROUP BY nom;
 \end{lstlisting}
 
 \item Afficher le nombre de ventes de chaque produit:\\
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
 SELECT COUNT(*) FROM client
-GROUP BY produit;\\
+GROUP BY produit;
 \end{lstlisting}
 
 \item Afficher la somme des ventes suppérieures à 15 euros par année:\\
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
 SELECT SUM(prix) FROM client
 WHERE prix > 15
-GROUP BY année;\\
+GROUP BY année;
 \end{lstlisting}
 \end{enumerate} 
 
@@ -151,16 +171,14 @@ Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyée
 
 Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef, car la valeur est nulle.\\
 
-\lstset{language=Python}
+ 
 \begin{lstlisting}
-
 # first thing to do is to load the lib
 from mrjob.job import MRJob
 # MRJob is a python class which will be overloaded
 
-
 class SQLSelect(MRJob):
-
+	SORT_VALUES = True
 	# send the line as a key and no value
 	def mapper(self, _, lines):
 		for l in lines.split('\n'):
@@ -170,11 +188,9 @@ class SQLSelect(MRJob):
 	def reducer(self, k, v):
 		print(k)
 
-
 if __name__ == '__main__':
 	#just run mapreduce 
 	SQLSelect.run()
-
 \end{lstlisting}
 
 \underline{1 solution : passer les informations comme valeur}
@@ -183,17 +199,15 @@ Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyée
 
 Reduce : Récupère une clef nulle et une liste de valeur contenant toutes les lignes.\\
 
-\lstset{language=Python}
+ 
 \begin{lstlisting}
-
 # first thing to do is to load the lib
 from mrjob.job import MRJob
 # MRJob is a python class which will be overloaded
 
-
 class SQLSelect(MRJob):
-
-	# send the line as a key and no value
+	SORT_VALUES = True
+	# send the line as a value associed with no key
 	def mapper(self, _, lines):
 		for l in lines.split('\n'):
 			yield(None,l)
@@ -203,11 +217,9 @@ class SQLSelect(MRJob):
         for v in values:
 		    print(v)
 
-
 if __name__ == '__main__':
 	#just run mapreduce 
 	SQLSelect.run()
-
 \end{lstlisting}
 
 \subsubsection{Différences}
@@ -218,14 +230,14 @@ La première solution quand à elle ne répond pas vraiment à la demande car s'il e
 
 
 \begin{figure}[!h]
-\includegraphics[width=15cm]{tp1_exo1_val.png} 
+\includegraphics[width=10cm]{tp1_exo1_val.png} 
 %\caption{Map, sort step with output of sorting step for the value oriented solution} 
 \caption{Etapes map et sort pour le cas où les informations sont envoyées via la valeur} 
 \label{tp1_exo1_val} 
 \end{figure} 
 
 \begin{figure}[!h]
-\includegraphics[width=15cm]{tp1_exo1_key.png} 
+\includegraphics[width=10cm]{tp1_exo1_key.png} 
 %\caption{Map, sort step with output of sorting step for the value oriented solution} 
 \caption{Etapes map et sort pour le cas où les informations sont envoyées via la clef} 
 \label{tp1_exo1_key} 
@@ -239,9 +251,9 @@ On remarque qu'à la sortie de l'étape de triage, soit l'on obtient la liste des 
 Afficher les ventes :\\
 
 En SQL :
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
-SELECT prix FROM client;\\
+SELECT prix FROM client;
 \end{lstlisting}
 
 Indication : Même exercice que précedemment, sauf qu'un filtrage des information doit être effectué.\\
@@ -253,21 +265,17 @@ Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyée
 
 Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef.\\
 
-\lstset{language=Python}
+ 
 \begin{lstlisting}
-
 	def mapper(self, _, lines):
 		for l in lines.split('\n'):
             # knowing that price is the third column, just take this value
 			yield(None,l.split(',')[2]) # the first element is 0
 
-	# and print it ... That's all folks 
 	def reducer(self, key, values):
         for v in values: 
             # values contains all the values, because they were all sorted to the None key
 		    print(v)
-
-
 \end{lstlisting}
 
 \subsection{Exercie 3}
@@ -275,9 +283,9 @@ Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef.\\
 Afficher les prix de ventes :\\
 
 En SQL :
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
-SELECT DISTINC prix FROM client;\\
+SELECT DISTINCT prix FROM client;
 \end{lstlisting}
 
 Ici le mot clef DISTINCT permet d'éviter d'avoir des redondances d'information.\\
@@ -287,32 +295,360 @@ Indication : pour réussir très facilement cet exercice, il faut avoir une bonne 
 \subsubsection{Corrigé}
 
 Pour réussir, il suffit de se servir de l'étape de sorting entre map et reduce et du fait que les valeurs sont triées par clef, ainsi si les prix de ventes sont des clefs ... 
-\lstset{language=Python}
+ 
 \begin{lstlisting}
-	# send the line as a key and no value
 	def mapper(self, _, lines):
 		for l in lines.split('\n'):
             # knowing that price is the third column, just take this value
 			yield(l.split(',')[2],None) # the first element is 0
 
-	# and print it ... That's all folks 
 	def reducer(self, key, values):
         print(k) # values contains a list of None values !
-
 \end{lstlisting}
 
 
 \subsection{Exercice 4}
 
-Afficher les ventes avant 2011:\\
+Afficher les ventes avant 2011:
 
-\lstset{language=SQL}
+ 
 \begin{lstlisting}
 SELECT * FROM client
-WHERE année < 2011;\\
+WHERE année < 2011;
 \end{lstlisting}
 
-Indication : ici, on reprend l'exercice 1 et on ajoute un filtrage sur les lignes et non plus les colonnes. Pour cela deux choix s'offrent à vous ... 
+Indication : ici, on reprend l'exercice 1 et on ajoute un filtrage sur les lignes et non plus les colonnes. Pour cela deux choix s'offrent à vous ... Soit vous souhaiter filtrer au niveau du mapper, soit du reducer. \\
+
+Attention : la logique MapReduce indique que plus de ressources sont allouées pour les mapper (souvent plus nombreux). Ainsi seule cette solution sera présentée.\\
+
+\subsubsection{Corrigé}
+
+Ici l'idée est de ne mapper que les informations correspondantes au filtre en question, ici de vérifeir que l'année est inférieur à 2011.\\
+
+ 
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			if int(l.split(',')[6]) < 2011:
+				yield(None,l)
+
+	def reducer(self, k, v):
+		for i in v:
+			print i
+\end{lstlisting}
 
 
+\subsection{Exercice 5}
+
+Afficher l'argent amassé au cours des années passées. Puis l'argent amassé depuis 2012 inclu.
+
+ 
+\begin{lstlisting}
+SELECT SUM(prix) FROM client;
+\end{lstlisting}
+
+ 
+\begin{lstlisting}
+SELECT SUM(prix) FROM client
+WHERE annee >=2012;
+\end{lstlisting}
+
+\subsubsection{Corrigé}
+
+Pour sommer les éléments il suffit de les additionner dans le reduceur.\\
+
+ 
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			if int(l.split(',')[6]) > 2011:
+				yield(None,float(l.split(',')[2]))
+
+	def reducer(self, k, v):
+		somme = 0
+		for i in v:
+			somme += i
+		print somme
+\end{lstlisting}
+
+ou dans le cas où l'on connait un minimum python:\\
+
+ 
+\begin{lstlisting}
+  def mapper(self, _, lines):
+     for l in lines.split('\n'):
+        if int(l.split(',')[6]) > 2011:
+           yield(None,float(l.split(',')[2]))
+
+  def reducer(self, k, v):
+     print sum(v)
+\end{lstlisting}
+
+On remarque l'utilisation float(), car les valeurs lues sont toujours considérées comme des chaines de caractères. On aurait aussi pu choisir de caster (terme informatique pour parler du passage forcé d'un type de donéne vers un autre).
+
+Remarque sur le fichier de test le résultat est : 192941.5
+
+Remarque bis: Souvenons nous que le mapper renvoie un générateur python qui n'est utilisable qu'une seule fois. Ce qui est suffisant ici mais si l'on avait voulu chainer deux calculs sur le reducer :\\
+
+ 
+\begin{lstlisting}
+	def reducer(self, k, v):
+		print sum(v)
+		print sum(v) # it's not very smart
+\end{lstlisting}
+
+Vous auriez obtenu : 192941.5 et 0 
+
+\subsection{Exercice 6}
+
+Afficher le nombre de vente.
+
+ 
+\begin{lstlisting}
+SELECT COUNT(*) FROM client
+\end{lstlisting}
+
+\subsubsection{Corrigé}
+
+Pour compter les ventes, il suffit de connaitre le nombre de ligne du fichier. Pour cela on peut se servir des résultats de l'exercice 1.
+
+ 
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+           yield(None,l)
+
+	def reducer(self, k, v):
+		cpt = 0
+		for i in v:
+			cpt += 1
+		print cpt
+\end{lstlisting}
+
+La même chose avec des connaissances en python :\\
+
+ 
+\begin{lstlisting}
+   def mapper(self, _, lines):
+      for l in lines.split('\n'):
+         yield(None,l)
+
+   def reducer(self, k, v):
+      print len(list(v))
+\end{lstlisting}
+
+Le reduceur prend en entrée, une clef ainsi qu'un générateur de données python. La fonction list() permet de transformer un générateur en liste. Cette liste peut alors être compter avec la fonction len() qui renvoie la longeur d'une liste.\\
+
+L'autre méthode est d'utiliser d'autres propriétés du paradigme MapReduce : \\
+
+ 
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			yield(None,1)
+
+	def reducer(self, k, v):
+		print sum(v)
+\end{lstlisting}
+
+Puisque l'étape de sort trie par clef, il suffit de donner la même valeur de clefs à chaque mapper ET de renvoyer 1 pour dire que la ligne à été traité. Ainsi le reduceur reçoit une clef vide avec une liste de valeur 1.
+
+
+\subsection{Exercice 7}
+
+Maintenant on voudrait connaitre le nombre de vente par année :\\
+
+ 
+\begin{lstlisting}
+SELECT COUNT(*) FROM client
+GROUP BY année;
+\end{lstlisting}
+
+Indication : Ici, on entre dans les véritables utilisations de MapReduce, c'est-à-dire de la véritable analyse de données. Ainsi, pour résoudre ce problème il suffit de penser à quelle clef vous voullez en sortie de l'étape de triage.\\
+
+\subsubsection{Corrigé}
+
+Map : Pour chaque vente, l'année de la vente sera affectée comme clef au reduceur, et puisque l'on veu le nombre de vente il suffit de mettre la valeur à 1.
+
+Reduce : Le reduceur n'a qu'à sommer les valeurs associées à chaque clef.
+
+ 
+\begin{lstlisting}
+def mapper(self, _, lines):
+   for l in lines.split('\n'):
+      yield(l.split(',')[6],1)
+
+def reducer(self, k, v):
+   print "l'année %s, il y a eu %s vente"%(k,sum(v))
+\end{lstlisting}
+
+Remarque : Avec le jeu de test vous devriez obtenir :\\
+
+\noindent
+\textsf{
+l'année 1999, il y a eu 6299 vente\\
+l'année 2000, il y a eu 6209 vente\\
+l'année 2001, il y a eu 6174 vente\\
+l'année 2002, il y a eu 6300 vente\\
+l'année 2003, il y a eu 6181 vente\\
+l'année 2004, il y a eu 6378 vente\\
+l'année 2005, il y a eu 6305 vente\\
+l'année 2006, il y a eu 6352 vente\\
+l'année 2007, il y a eu 6208 vente\\
+l'année 2008, il y a eu 6214 vente\\
+l'année 2009, il y a eu 6182 vente\\
+l'année 2010, il y a eu 6204 vente\\
+l'année 2011, il y a eu 6318 vente\\
+l'année 2012, il y a eu 6307 vente\\
+l'année 2013, il y a eu 6201 vente\\
+l'année 2014, il y a eu 6168 vente\\
+}
+
+\subsection{Exercice 7}
+
+Afficher la somme des ventes par mois qui ne finissent pas par "bre":\\
+
+\begin{lstlisting}
+SELECT SUM(prix) FROM client
+GROUP BY mois
+HAVING mois NOT LIKE "%bre";
+\end{lstlisting}
+
+Ici on introduit un nouveau mot clef SQL "HAVING" qui est pour faire simple, une condition WHERE sur le champs du GROUP BY.\\
+
+Indication : ici le problème est de filtrer les clefs pour ne pas les envoyer ou alors de les treier dans le reducer.\\
+
+\subsubsection{Corrigé}
+
+Map : envoie le mois comme clef si n'appartient pas à la liste [septembre, octobre, novembre, decembre].\\
+
+Reduce : Somme les valeurs.\\
+
+\begin{lstlisting}
+def mapper(self, _, lines):
+   for l in lines.split('\n'):
+      mois = l.split(',')[5]
+      prix = l.split(',')[2]
+      if mois not in ['Septembre', 'Octobre', 'Novembre', 'Decembre']:
+          yield(mois,float(prix))
+
+	def reducer(self, k, v):
+		print "%s : %s euros"%(k,sum(v))
+\end{lstlisting}
+
+Les résultats alors ovbtenus devraient être : \\
+
+\noindent
+\textsf{
+Avril : 92179.5 euros\\
+Fevrier : 92953.0 euros\\
+Janvier : 94369.5 euros\\
+Juillet : 92419.0 euros\\
+Juin : 93857.5 euros\\
+Mai : 93006.5 euros\\
+Mars : 91721.5 euros\\
+}
+
+\subsection{Exercice 8}
+
+Afficher le meilleur client de 2013.\\
+
+\subsubsection{Corrigé}
+
+Il n'est pas possible de résoudre ce problème avec une seule étape de MapReduce. Deux étape de map reduce sont alors nécessaire, l'une pour compter la somme des achat par client puis de parcourir cette liste et de choisir le max. \\
+
+MRJob permet très simplement d'enchainer plusieurs job MapReduce dans un seul programme. Pour cela, il suffit de définir des steps, en surchargeant la méthod step de la classe MRJob.
+
+\begin{lstlisting}
+class SQLSelect(MRJob):
+   SORT_VALUES = True
+   def mapper(self, _, lines):
+      for l in lines.split('\n'):
+         client = l.split(',')[0]
+         prix = l.split(',')[2]
+         yield(client,float(prix))
+
+   def reducer_par_client(self, k, v):
+      yield(None, (sum(v),k))
+
+   def reducer_meilleur(self, _, v):
+      best_kv = max(v)
+      print "%s a dépensé %s euros !"%(best_kv[1],best_kv[0])
+
+   def steps(self):
+      return [
+         self.mr(mapper=self.mapper,
+                 reducer=self.reducer_par_client),
+         self.mr(reducer=self.reducer_meilleur)
+		]
+
+if __name__ == '__main__':
+	SQLSelect.run()
+\end{lstlisting}
+
+Vous devriez trouvez "Martinez a dépensé 12619.5 euros !"\\
+
+\subsubsection{Explication}
+
+Pour l'étape de Map, il n'y pas de difficultés, les clefs étant triées dans l'étape de triage, il parait évident qu'il faut utilisé les noms comme clef. Car dans ce cas, l'étape Reduce récupérera chaque nom avec l'ensemble des valeurs associées, ici les prix des commandes.\\
+Le fait de forcer les prix en float (réel) permet d'utiliser la puissance de calcul des mappers.\\
+
+Pour le premier reduceur, on applique les résultats de l'exercice précédent pour pouvoir appliquer le GROUP BY. Ainsi en sorti des premiers reducers, on trouve la somme des achats par client. Maintenant il faut pouvoir en extraire le plus grand. Un reducer par client sera nécessaire pour calcuelr les sommes des achats par client.\\
+
+Le but étant de récupérer dans un deuxième reducer l'ensemble des couples clefs-valeurs (ici client-somme\_des\_achats) pour pouvoir itérer sur la liste des couples, il est donc primordiale que le premier reducer renvoie un couple clef valeur avec la même clef.\\
+Pour résumer, le premier reducer ne sert qu'à préparer la concaténation des résultats qui aura lieux dans la deuxième étape de triage.\\
+
+Ainsi à la ligne 10, on renvoie un générateur produisant des ensembles clef-valeur avec pour clef la valeur vide et pour valeur un tuple contenant les clients et la somme de leurs achats. Ici on inverse pour voir directement appliquer dans le deuxième reducer la fonction python Max(). Mais on aurait pu garder l'ordre initial :\\
+
+\begin{lstlisting}
+def reducer_meilleur(self, _, v):
+   max = 0
+   best_c = None
+   for i in v:
+      s_prix = i[1]
+      if s_prix > max:
+         max = s_prix
+         best_c = i[0]
+
+   print best_c, max
+\end{lstlisting}
+
+Car les valeur en entrée du deuxième reducer sont des tuples accessible via les crochets.\\
+   
+Ensuite comme expliquer plus tôt, il est impératif de surcharger la méthode de classe "steps()", pour cela, il suffit de définir les différent job MapReduce que l'on veut enchainer et de définir pour chaque job les méthode de map et de reduce.\\
+
+Ici, un premier job est défini avec pour mapper et reducer nos fonctions permettant de calculer les achats par client.\\
+Un deuxième job est alors créer avec uniquement un reduceur (dans ce cas il n'y aura pas de map, on récupère juste le résultat précédent) permettant de mesurer le max.\\
+
+
+\subsection{Exercice 9}
+
+Afficher les 10 mots les plus cités. 
+
+\subsubsection{Corrigé}   
+	
+\begin{lstlisting}
+	def mapper(self, _, line):
+		words = line.split(',')
+		for w in words:
+			yield(w,1)
+
+	def reducer_1(self, k, v):
+		yield(None,(sum(v),k))
+	
+	def reducer_2(self,_,v):
+		l_v= list(v)
+		sorted(l_v,reverse=True)
+		best = l_v[:10]
+		for b in best:
+			print "%s : %s"%(b[0],b[1])
+\end{lstlisting}
+
+Les difficultés commencent là, car comment récupérer les 10 meilleurs une fois les mots comptés. Pour cela on utilise un nouveau reducer qui va trier les résultats (car il est plus compliquer ici de trier les résultats par le sort de Map-Reduce). ici les difficultés ne sont pas algorithmique mais de programation Python. \\
+
+La ligne 10 permet de récupérer les résultats dans une liste de tuples.\\
+La ligne 11 permet de trier cette liste en utilisant la fonction "sorted" de Python. Reverse permet d'obtenir un ordre decroissant.\\
+On peut remarque que si la sortie du reducer 1 avait été inversée, il aurait été nécessaire de spécifier sur quelle "clef" (dans un sens différent de la clef de la pair clef-valeur) trier. Pour cela, une fonction anonyme aurait dut être écrite (lambda) qui à un tuple renvoie son deuxième élément. Ansi la clef de triage aurait été le deuxième élément de chaque tuple.\\
+
+Enfin on ne récupère que les 10 premières valeurs de la liste qu'on affiche ensuite.\\
 \end{document}  
