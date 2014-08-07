@@ -17,16 +17,20 @@
 
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
 \definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{myred}{rgb}{0.6,0,0}
+\definecolor{myblue}{rgb}{0,0,0.6}
 
 \begin{document}
 \lstset{%
-backgroundcolor=\color{lightgray}, 
+backgroundcolor=\color{white}, 
 basicstyle=\footnotesize,
 commentstyle=\color{mygreen},
+stringstyle=\color{myred},
 breaklines=true,
-frame=single,
+frame=shadowbox,
 keepspaces=true,
-keywordstyle=\color{blue},
+columns    = flexible,%
+keywordstyle=\color{myblue},
 language=Python,
 numbers=left,
 numbersep=5pt,
@@ -47,10 +51,28 @@ tabsize=3,
 
 \section{Problématique}
 
-L'une des particularités des technologies BigData et notamment Hadoop est qu'elles reposent sur des information non-structurés stockées en HDFS (Hadoop File System) pour Hadoop. Or, il est courant de vouloir analyser les données en notre possession.\\
-Dans un DataWareHouse, pas de souci, le SQL est là pour nous aider. \\
 
-Dans notre cas, il serait souhaitable de pouvoir faire du requetage SQL sur des données non structurées. Car des données non-structurées ne peuvent être ni parcourues, ni analysées.\\
+Lorsque les problématique BigData sont abordés, dans la littérature et sur le net, il parait assez clair que les problématiques BigData se scindent en deux grandes catégories:
+\begin{enumerate}
+\item \underline{Technologique}, car pour faire du BigData, il faut un ensemble d'infrastructures matériels (Cluster, Amazon EC2, EMR, ...) et logiciels (Hadoop, NoSQL databases, ...). Qui ont pour points commun d'être en perpetuelle évolution et d'avoir une littérature plutôt bien fournie sur le net.
+\item \underline{Algorithmique}, car pour pouvoir faire du BigData, il faut pouvoir intéragir avec les données dans l'ensemble des infrastructures. Pour cela, la création d'algorithmes MapReduce est nécessaire. Des alternatives existent (Spark, Mahout, Hive ...) pour pouvoir manipuler les données sans passer par l'écriture d'algorithmes MapReduce, mais ne permettent pas des traitements avancés et personalisés.
+\end{enumerate}
+
+Ces technologies étant en perpetuelle évolution, leur simple suivi tecnique reste un challenge. Ainsi seuls des processus simples sont utilisés. Les limitations des processus batchs MapReduce sur Hadoop tendent encore à faire penser qu'Hadoop ne sert surtout qu'à faire de l'ETL, pour un moindre coût.\\
+Un processus ETL (Extract, Transform, Load) consiste à extraire les données de fichiers de données non-structurés hétérogènes et arrivant en flux continu, puis à transformer ses données dans une certaine structuration, puis à les charger dans un DataWareHouse sur lequel les processus métiers seront executer.\\
+
+Il semble clair, qu'une étude approfondie des possibilités algorithmiques MapReduce reste encore à faire. Le net dans ce cas précis manque singulièrement de littératures sauf si vous compter compter des mots encore et encore.\\
+
+Le cout de compréhension du paradigme MapReduce est encore trop grand pour que les chercheurs et ingénieurs aient approfondis le sujet.\\
+
+Voilà pourquoi le cours sur MapReduce prend la place d'un simple cours sur les technologies BigData.\\
+
+\section{SQL sur des données non-structurés en MapReduce}
+
+L'une des particularités des technologies BigData et notamment Hadoop est qu'elles reposent sur des information non-structurés stockées en HDFS (Hadoop File System) pour Hadoop. Or, il est courant de vouloir analyser les données avant d'y appliquer le moindre traitement.\\
+Dans une base de données relationnelles (MySQL, PostGreSQL, ...), cette analyse se fait au moyen de requêtes SQL. \\
+
+Il serait ainsi souhaitable de pouvoir faire les mêmes requêtes qu'en SQL sur des données non structurées. Car des données non-structurées ne peuvent être ni parcourues, ni analysées. Il sera donc nécessaire de structurer les données avant de les analyser.
 
 \section{SQL pour les nuls}
 
@@ -67,22 +89,23 @@ GROUP BY nom_champs
 ORDER BY nom_champs;
 \end{lstlisting}
 
-Les instructions nécessaires pour faire de l'analyse de données sont :\\
+Une partie des instructions les plus usuelles pour faire de l'analyse de données sont :\\
 
 \begin{enumerate}
-\item $SELECT$ : Permet de selectionner des champs (ou pas : * selctionne tous les champs) ou de renvoyer des fonctions d'agrégats :
+\item $SELECT$ : Permet de selectionner des colonnes des tables, appelées champs (* selctionne tous les champs) ou de renvoyer des fonctions d'agrégats via un calcul:
 \begin{itemize}
 \item $AVG(nom champs)$ : permet de calculer la valeur moyenne des valeurs contenues dans le champ.
 \item $COUNT(nom champs)$ : permet de calculer le nombre d'enregistrements (nombre de lignes)
 \item $MIN/MAX(nom champs)$ : permet de calculer la valeur minimale/maximale contenu dans le champs.
 \item $SUM(nom champs)$ : permet de calculer la somme des valeurs du champs.
 \end{itemize}
-\item WHERE : Permet de filtrer les enregistrements, c'est-à-dire qu'on va comparer les valeurs du champs avec une valeur. Par exemple : "nombre < 20". Les opérateurs de comparaison sont : "<, >, ==, IN, LIKE, ...". Chaque comparaison doit pouvoir renvoyer "VRAI" ou "FAUX". On peut aussi chainer les comparaison pour créer une comparaison, par exemple : "nombre < 20 AND nombre > 10". Les mots-clefs pour chainer sont "AND" et "OR".
-\item GROUP BY : permet de grouper plusieurs résultats et d'utiliser une fonction d'agrégat sur un groupe de résultats. Par exemple : une table qui contient toutes les ventes d'un magasin, il est possible de regrouper les ventes par clients identiques et d'obtenir le coût total des achats pour chaque client.
+\item WHERE : Permet de filtrer les enregistrements, c'est-à-dire que les valeurs contenus dans un champs seront toutes comparer à une valeur de filtrage. Par exemple : "nombre < 20". Les opérateurs de comparaison sont : "<, >, ==, IN, LIKE, ...". Chaque comparaison doit pouvoir renvoyer "VRAI" ou "FAUX". \\
+On peut aussi chainer les comparaisons qui devra ne renvoyer qu'une seule valeur Vrai ou Faux. Par exemple, "nombre < 20 AND nombre > 10" comparera toutes les valeurs contenues dans le champs nombre et ne renverra que celles strictement supérieures 10 et inférieurs à 20. Pour chainer, il est courant d'utiliser les mots-clefs "AND" et "OR".
+\item GROUP BY : permet de grouper plusieurs résultats et d'utiliser une fonction d'agrégat sur un groupe de résultats. Dans une table qui contiendrait toutes les ventes d'un magasin, il serait possible de regrouper les ventes par clients et d'obtenir le coût total des ses achats. 
 \item ORDER BY : permet de trier les résultats.
 \end{enumerate} 
 
-\subsection{Exemple}
+\subsection{Exemple d'utilisation du SQL}
 
 Soit la table "client" suivante :\\
 
@@ -99,8 +122,6 @@ titi & a & 11 & 2013\\
 toto & d & 30 & 2014\\
 \hline
 \end{tabular}
-
-Des informations peuvent êtres extraites de cette table :
 
 \begin{enumerate}
 \item Afficher les produits vendus : \\
@@ -122,9 +143,9 @@ WHERE prix > 15;
 SELECT * FROM client
 WHERE année < 2011 OR année > 2013;
 \end{lstlisting}
-(Si l'on met AND alors il faut qu'une année soit en même temps inférieur à 2011 et supérieur à 2013, ce qui est un ensemble nulle).
+(Si l'on met AND alors il faut qu'une année soit en même temps inférieure à 2011 et supérieure à 2013, ce qui est un ensemble nul).
 
-\item Afficher les meilleurs ventes par client :\\
+\item Afficher le plus gros achat de chaque client :\\
  
 \begin{lstlisting}
 SELECT MAX(prix) FROM client
@@ -149,13 +170,63 @@ GROUP BY année;
 
 \section{Map-Reduce SQL}
 
-Même s'il existe des moyens de faire des requêtes en SQL sur des fichiers stockés en HDFS (Voir Hive), les requetes sur les données se feront par l'intermésiare d'algorithme Map-Reduce.\\
-Pour cela nous allons utiliser un fichier CSV de données de ventes assez simple contenant des lignes tel que l'on retrouve : nom,produit,prix\_vente,magasin,pays,mois,année.\\
-Nous allons donc tenter de faire du requetage sur ces données :
+Même s'il existe des moyens de faire des requêtes en SQL sur des fichiers stockés en HDFS (comme Hive, Pig), les requêtes sur les données se feront par l'intermédiaire d'algorithmes Map-Reduce.\\
+Pour cela nous allons utiliser un fichier CSV de données de ventes assez simple ayant pour structure : nom,produit,prix\_vente,magasin,pays,mois,année\\
+Nous allons donc tenter de faire du requetage sur ces données.
+
+\subsection{MapReduce pour les nuls}
+
+MapReduce est un paradigme algorithmique. C'est-à-dire un ensemble de contraintes informatiques impliquant un effort algorithmique pour pouvoir se conformer à l'ensemble de contraintes.\\
+Ces contraintes, sont simples : 
+\begin{itemize}
+\item Un algorithme MapReduce contient une phase Map, prenant en entrée une paire clef-valeur et en sorti une paire clef-valeur.
+\item Un algorithme MapReduce contient une phase de triage, mélangeant les résultats des différents mapper et trie les résultats par clef. En entrée, le trieur prend une liste de paire clef-valeur et renvoie en sorti une liste de pair clef liste de valeur.
+\item Un algorithme MapReduce contient une phase Reduce, prenant en entrée une clef et une liste de valeur et renvoie une clef et une valeur.
+\end{itemize}
+
+\begin{figure}[!h]
+\includegraphics[width=10cm]{tp1_mapreduce.png} 
+\caption{Exemple de processus MapReduce dans son application classique} 
+\label{tp1_exo1_val} 
+\end{figure} 
+
+\subsection{Contexte technique}
+
+Hadoop accepte des processus MapReduce écrit en Java. Hadoop grace à l'encapsulation de streamer permet de lancer des processus écris en python ou d'autres langages. Malgré tout, l'utilisation, configuration d'hadoop reste quelque chose d'assez sensible et l'écrire d'un processus MapReduce demande une certaine maitrise du langage. Dans un but pédagogique et pour que l'essentiel du temps ne soit pas passé à résoudre des problèmes de programmations, cette solution ne sera pas abordée. Sachez cependant qu'une maitrise d'hadoop peut-être interessante et que chaque exercice pourra être refait sur hadoop.\\
+
+D'autres possibilités s'offraient à nous comme Sparks mais nécessitait une configuration et mise en place couteuse, même si son utilisation est plus simple et possède d'autres fonctionnalités. Ainsi une librairie Python a été choisi : MRJob, car son installation est simple, aucune configuration n'est demander pour tourner sur une machine locale et qu'elle est très bien documenté. \\
+
+De plus, sa fonctionnalité de chainage de processus MapReduce est séduisante dans le cadre d'un cours.\\
+MRJob est extremement pratique pour écrire simplement des processus MapReduce mais est particulièrement lent (10 fois plus lent qu'Hadoop). Ainsi MRJob permet de se concentrer sur le prototypage de processus MapReduce, permet d'être tester sur des cluster (un fichier de configuration permet de lancer les processus MRJob sur un cluster hadoop ou directement sur Amazon EMR).\\
+
+Ainsi Pour écire un processus MapReduce il faudra une base : 
+
+\begin{lstlisting}
+# first thing to do is to load the lib
+from mrjob.job import MRJob
+# MRJob is a python class which will be overloaded
+
+class SQLSelect(MRJob):
+	def mapper(self, _, lines):
+       #define your mapper
+       yield(key,value)
+
+	def reducer(self, key, values):
+       #define your reducer
+       yield(key,value) # or return, or print
+
+if __name__ == '__main__':
+	#just run mapreduce 
+	SQLSelect.run()
+\end{lstlisting}
 
 \subsection{Exercice 1}
 
-Afficher toutes les informations. SQL : SELECT * FROM client;\\
+Afficher toutes les informations contenues dans le fichier. 
+
+\begin{lstlisting}
+SELECT * FROM client;
+\end{lstlisting}
 
 Indication : Pensez à ce que doivent être les clefs-valeurs en sortie du mapper.\\
 
@@ -167,9 +238,9 @@ Pour cela deux possibilités : \\
 
 \underline{1 solution : passer les informations comme clef}
 
-Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne devient une clef, la valeur est nulle car on ne compte rien en faire.\\
+Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est séparé en lignes. Chaque ligne devient une clef, la valeur est nulle car on ne compte rien en faire.\\
 
-Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef, car la valeur est nulle.\\
+Reduce : Récupère un ensemble de clef-(liste de valeurs) trié par clef et affiche la clef, car la valeur est nulle.\\
 
  
 \begin{lstlisting}
@@ -195,9 +266,9 @@ if __name__ == '__main__':
 
 \underline{1 solution : passer les informations comme valeur}
 
-Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne devient une valeur, la clef est nulle car on ne compte rien en faire.\\
+Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est séparé en lignes. Chaque ligne devient une valeur, la clef est nulle car on ne compte rien en faire.\\
 
-Reduce : Récupère une clef nulle et une liste de valeur contenant toutes les lignes.\\
+Reduce : Récupère une clef nulle et la liste des valeurs contenant toutes les lignes.\\
 
  
 \begin{lstlisting}
@@ -222,12 +293,55 @@ if __name__ == '__main__':
 	SQLSelect.run()
 \end{lstlisting}
 
+La ligne 6 sert à trier non pas seulement sur les clefs mais aussi sur les valeurs. Optionnel ici, cette option reste cependant extremement util en certaine occasion.
+La ligne 9 se sert de la librairie standard String de Python pour séparer le fichier en ligne car on se sert du caratère spéciale '$\backslash n$' comme séparateur. On itère pour traiter chaque ligne.\\
+La ligne 10 est la plus compliqué si les générateurs ne sont pas connus. Un générateur en Python permet de ne pas calculer le résultat d'une fonction avant de le retourner mais à la place de retourner un générateur des résulats. Cela permet, moins d'accès I/O entre les fonction et surtout de ne pas surcharger la mémoire, car le générateur ne marche qu'une fois:
+
+\begin{lstlisting}
+def print_ml(list):
+   for item in list:
+      print item
+      # toute la liste est charger en mémoire pour affichage
+
+def generate_list(list):
+   for item in list:
+      yield item
+      # rien n'est charger, on créer un générator qui aura pout tache de parcourir toute la liste en oubliant au fuir et à mesure pour ne pas surcharger la mémoire
+
+l = [1,2,3]
+
+print_ml(l)
+# affichera 1 2 3
+print_ml(l)
+# re affichera 1 2 3 car la liste est chargé en mémoire
+
+list = generate_list(l)
+for i in list:
+   print i
+   # affichera 1 2 3
+
+for i in list:
+   print i
+   # n'affichera rien car une fois générer les valeurs sont oubliées, il faudra rappeller la fonction pour réafficher 1 2 3
+\end{lstlisting}
+
+
+
 \subsubsection{Différences}
 
-En réalité, seule la deuxième solution correspond à la commande SQL demandée, car elle renverra TOUS les enregistrements. La solution en passant par les valeurs, implique que toutes les valeurs aient la même clefs et donc que chaque valeur soit ajoutée à la liste des valeurs récupérée par le reducer (unique puisqu'il n'y a qu'une seule clef). Le reducer passera chaque valeur en compte et le renverra.\\
+En réalité, seule la deuxième solution correspond parfaitement à la commande SQL demandée, car elle renverra TOUS les enregistrements, même les doublons. Même si cette solution n'est pas du tout orienté BigData (car une seule machine parcourera tout le fichier).\\
+Dans la deuxième solution, les mapper renvoient tous la même clef, ce qui implique qu'en sorti du trieur, il n'y ai qu'un seul reducer qui a pour entrée la clef nulle et une liste de toutes les valeurs. Le reducer boucle sur la liste pour afficher toutes les valeurs.\\
 
 La première solution quand à elle ne répond pas vraiment à la demande car s'il existe une redondance des informations, ici une même vente effectuée, alors l'étape de sorting va regrouper les valeurs nulles sous une seule et même clef correspondant à l'information qui sera affichée.\\
+Dans le cas d'un doublons, un reducer pourrait récupérer la paire clef-valeur : <$v_k$, ($\oslash$,$\oslash$)>, ainsi des informations seront perdus.\\
 
+Remarque : La première solution répond plutôt à la requête :\\
+
+\begin{lstlisting}
+SELECT DISTINCT * FROM client;
+\end{lstlisting}
+
+Ici le mot clef DISTINCT permet d'éviter d'avoir des redondances d'information.\\
 
 \begin{figure}[!h]
 \includegraphics[width=10cm]{tp1_exo1_val.png} 
@@ -256,14 +370,14 @@ En SQL :
 SELECT prix FROM client;
 \end{lstlisting}
 
-Indication : Même exercice que précedemment, sauf qu'un filtrage des information doit être effectué.\\
-Pour cela penser qu'une ligne peut être de nouveau séparé.
+Indication : Même exercice que précedemment, sauf qu'un filtrage des champs doit être effectué.\\
+Pour cela penser qu'une ligne peut être de nouveau séparée, car un ligne est un objet String en Python.
 
 \subsubsection{Corrigé}
 
-Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est spéraré en lignes. Chaque ligne est de nouveau séparer pour récupérer le prix qui devient la clef.\\
+Map : Cette étape doit correspondre à la séparation du fichier en lignes envoyées à chaque mapper. Pour cela, le fichier est séparé en lignes. Chaque ligne est de nouveau séparée pour récupérer le prix qui devient la clef.\\
 
-Reduce : Récupère chaque ensemble de clef-valeur et affiche la clef.\\
+Reduce : Récupère chaque ensemble de clef-valeurs et affiche les valeurs.\\
 
  
 \begin{lstlisting}
@@ -288,13 +402,11 @@ En SQL :
 SELECT DISTINCT prix FROM client;
 \end{lstlisting}
 
-Ici le mot clef DISTINCT permet d'éviter d'avoir des redondances d'information.\\
-
-Indication : pour réussir très facilement cet exercice, il faut avoir une bonne connaissance du processus MapReduce\\
+Indication : pour réussir très facilement cet exercice, une reflexion sur les deux exercices précédents est suffisante.\\
 
 \subsubsection{Corrigé}
 
-Pour réussir, il suffit de se servir de l'étape de sorting entre map et reduce et du fait que les valeurs sont triées par clef, ainsi si les prix de ventes sont des clefs ... 
+Pour réussir, il suffit de se servir de l'étape de sorting entre map et reduce et du fait que les valeurs soient triées par clef, ainsi si les prix de ventes sont des clefs ... 
  
 \begin{lstlisting}
 	def mapper(self, _, lines):

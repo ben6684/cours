@@ -17,16 +17,20 @@
 
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
 \definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{myred}{rgb}{0.6,0,0}
+\definecolor{myblue}{rgb}{0,0,0.6}
 
 \begin{document}
 \lstset{%
-backgroundcolor=\color{lightgray}, 
+backgroundcolor=\color{white}, 
 basicstyle=\footnotesize,
 commentstyle=\color{mygreen},
+stringstyle=\color{myred},
 breaklines=true,
-frame=single,
+frame=shadowbox,
 keepspaces=true,
-keywordstyle=\color{blue},
+columns    = flexible,%
+keywordstyle=\color{myblue},
 language=Python,
 numbers=left,
 numbersep=5pt,
@@ -42,18 +46,6 @@ tabsize=3,
 
 
 La manière de faire des requêtes de type SQL sur des ensembles de données non-structuré a été abordé dans le chapitre précédent et a posé les bases de l'écriture d'algorithme MapReduce.\\
-
-Il parait clair que les problématiques BigData se scindent en deux grandes catégories:
-\begin{enumerate}
-\item \underline{Technologique}, car pour faire du BigData, il faut un ensemble d'infrastructures matériels (Cluster, Amazon EC2, EMR, ...) et logiciels (Hadoop, NoSQL databases, ...). Qui ont pour points commun d'être en perpetuelle évolution et d'avoir une littérature plutôt bien fournie sur le net.
-\item \underline{Algorithmique}, car pour pouvoir faire du BigData, il faut pouvoir intéragir avec les données dans l'ensemble des infrastructures. Pour cela, la création d'algorithmes MapReduce est nécessaire. Des alternatives existent (Scala, Mahout, Hive ...) pour pouvoir manipuler les données sans passer par l'écriture d'algorithmes MapReduce, mais ne permettent pas des traitements avancés et personalisés.
-\end{enumerate}
-
-Il semble clair, qu'une étude approfondie des possibilités algorithmiques MapReduce reste encore à faire. Le net dans ce cas précis manque singulièrement de littératures sauf si vous compter compter des mots encore et encore.\\
-
-Le cout de compréhension du paradigme MapReduce est encore trop grand pour que les chercheurs et ingénieurs aient approfondis le sujet.\\
-
-Voilà pourquoi le cours sur MapReduce prend la place d'un simple cours sur les technologies BigData.\\
 
 \section{Bases de statistique}
 
@@ -79,17 +71,138 @@ Indication : Vous devez connaître la somme des prix ET le nombre de vente
 Plusieurs solutions sont possibles : \\
 
 \begin{itemize}
-\item la première solution que je vois et d'envoyer en sortie du mapper la clef nulle, pour récupérer sur un seul reduceur la liste des valeurs. Ainsi il suffit de sommer les valeurs et de la diviser par la taille de la liste.\\
+\item la première solution est une solution qui n'est pas MapReduce. Pour cela il suffit d'envoyer en sortie du mapper la clef nulle, pour récupérer sur un seul reduceur la liste des valeurs. Ainsi il suffit de sommer les valeurs et de la diviser par la taille de la liste.\\
 
 \begin{lstlisting}
-def mapper()
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			prix = l.split(',')[2]
+			yield None,float(prix)
+
+	def reducer(self, _, v):
+		l = list(v)
+		print sum(l)/len(l)
 \end{lstlisting}
 
-\item La deuxième solution est d'utiliser un combiner, 
+une autre possibilité pour le reducer: \\
 
-\item La troisième est d'enchainer deux job map-rduce
+\begin{lstlisting}
+	def reducer(self, _, v):
+        count = somme = 0
+        for i in l:
+            count =+ 1
+            somme += i[1]
+		print somme/count
+\end{lstlisting}
+
+Cette solution n'est pas MapReduce malgré toutes les apparences. Elle ne peut donc pas être considérée comme valide.\\
+
+\item La deuxième solution est d'utiliser un combiner qui est une étape supplémentaire dans un processus MapReduce qui se place entre le mapper et le reducer et qui a pour but de simplifier la tache du reducer. En effet, il est d'usage de mettre moins de reducer que de mapper et donc d'avoir plus de machines dédiées à l'étape du mapper. Mais comme une grande partie des fonction d'aggrégations se font coté reducer, il devient difficile de calculer des fonctions en temps raisonnable. Ainsi pour simplifier la tache on utilise un combiner, qui prend en entrée une clef et la liste des valeurs du mapper (et non de tous les mapper). Ce combiner va donc commencer la tache du reducer et envoyer moins de valeurs. \\
+
+Pa rexemple sur l'exemple du wordcount : 
+
+\begin{lstlisting}
+	def mapper(self, _, line):
+		words = line.split(',')
+		for w in words:
+			yield(w,1)
+
+    #ici pour chaque mapper on commence à sommer les mots
+    def combiner(self,k,v):
+        yield k, sum(v)
+
+	def reducer(self, k, v):
+		yield k, sum(v)
+\end{lstlisting}
+
+chaque mapper ayant une partie des données, au lieu d'envoyer <mot, (1,1,1,1,1,1,1,1,1,1,1,1,1)> le combiner enverra <mot, 13> et ainsi en entrée de chaque reducer il n'y aura pas une suite longue de 1 qu'il faudra sommer mais une courte liste de valeur.\\
+
+Ainsi pour l'exemple de la moyenne :\\
+
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			yield None, (1,float(l.split(',')[2]))
+			
+	def combiner(self,_,v):
+		c,s = zip(*v)
+		yield None, (sum(c),sum(s))
+
+	def reducer(self, _, v):
+		c,s = zip(*v)
+		print sum(s)/sum(c)
+\end{lstlisting}
+
+La fonction zip permet d'extraire les colonnes d'une liste de liste.\\
+
+\item La troisième est d'enchainer deux processus map-reduce
+
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			yield "count",1
+			yield "somme",float(l.split(',')[2])
+			
+	def combiner(self,k,v):
+		yield k, sum(v)
+		
+	def reducer(self, k, v):
+		yield None, (k,sum(v))
+
+	def reducer_2(self,_,v):
+		l = list(v)
+		print l[1][1]/l[0][1]
+\end{lstlisting}
+
+cette solution permet d'utiliser deux réducers pour sommer les 1 et les valeurs qui sont ensuite envoyer à un deuxième reducer. La somme est sut comme deuxième élément car SORT\_VALUES = True se qui implique que les valeurs sont triées elles aussi et que ce trie s'effectue sur la première colonne. \\
 
 \end{itemize}
+
+\subsection{Exercice 2}
+
+Calculer l'écart type des achats totaux par client.
+
+Pour rappelle l'écart type d'une variable aléatoire discrète X se calcul :
+
+\begin{align}
+  \sigma(X) = \sqrt{\frac{1}{n} \sum_{i=1}^{n}(x_i - \overline{X})^2} 
+\end{align}
+
+
+Les informations nécessaires sont : 
+\begin{itemize}
+\item la somme des achats par client (qui devient notre variable aléatoire $X$)
+\item la moyenne
+\item le nombre de client
+\end{itemize}
+
+\subsubsection{Corrigé}
+
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		for l in lines.split('\n'):
+			yield l.split(',')[0], float(l.split(',')[2])
+			
+	def combiner(self,k,v):
+		yield k,sum(v)
+
+	def reducer(self, k, v):
+		yield None, sum(v)
+		
+	def reducer_2(self, _, v):
+		X = list(v)
+		m = sum(X)/len(X)
+		print sqrt(sum([(x-m)*(x-m) for x in X])/len(X))
+\end{lstlisting}
+
+Remarque, ici les sommes sont effectué dans un deuxième reducer. Cela avait été interdit pour la moyenne, car le parcours devait se faire sur une très grande données (nombre de vente), alors qu'ici il s'agit d'une sous-liste ne contenant que le nombre de client, ce qui est beaucoup moins. \\
+
+Remarque sqrt est disponible dans le package math de python mais vous pourriez aussi d'utiliser numpy. 
+
+\subsection{k-means}
+
+
+
 
 
 \end{document}
