@@ -14,6 +14,7 @@
 \usepackage{listings}
 \usepackage{xcolor}
 
+\DeclareMathOperator*{\argmin}{arg\,min}
 
 \definecolor{mymauve}{rgb}{0.58,0,0.82}
 \definecolor{mygreen}{rgb}{0,0.6,0}
@@ -199,9 +200,119 @@ Remarque, ici les sommes sont effectué dans un deuxième reducer. Cela avait été 
 
 Remarque sqrt est disponible dans le package math de python mais vous pourriez aussi d'utiliser numpy. 
 
+\subsection{Multiplication de matrices}
+
+Soit deux Matrices de grandes tailles qui doivent êtres multipliés entre elles. Ecrire l'algorithme MapReduce qui permet de multiplier deux matrices. Pour cela, deux fichiers seront utiliser ayant pour structure $v_{0,0}$,$v_{0,1}$,...,$v_{0,m}\backslash$n ... jusqu'à la dernière ligne.\\
+
+Indication : On veut en sorti un fichier qui ai la même structuration que les fichiers d'entrées.\\
+
+Pour charger deux fichiers dans deux structures différentes, il faut pouvoir spécifier des options dans notre ligne de commande. Pour cela il suffit de surcharger la méthode "configure_options":
+
+\begin{lstlisting}
+import pandas as pd
+
+    def configure_options(self):
+        super(MRMultMat, self).configure_options()
+        self.add_passthrough_option('--m1', help="Filename of matrix 1")
+        self.add_passthrough_option('--m2', help="Filename of matrix 2")
+
+	def mapper(self, _, lines):
+		m1 = pd_read_csv(self.options.m1)
+		m2 = pd_read_csv(self.options.m2)
+\end{lstlisting}
+
+\subsubsection{Corrigé}
+
+\begin{lstlisting}
+	def mapper(self, _, lines):
+		
+		m1 = pd.read_csv(self.options.m1,names=range(100),header=0)
+		m2 = pd.read_csv(self.options.m2,names=range(100),header=0)
+		
+		for i in range(100):
+			l = m1.ix[i].tolist()
+			for j in range(100):
+				c = m2[j].tolist()
+				yield (i,j, sum([ii*jj for ii,jj in zip(l,c)])), None
+				
+	def reducer(self,k,_):
+		yield None, k
+		
+	def reducer_2(self, _, v):
+		for vv in v:
+			i, j, vvv = vv
+			print i,j, vvv
+\end{lstlisting}
+
+Attention pour lancer la commande, MRJob pour se conformer à Haddop oblige que les valeurs soient envoyées via STDIN, voilà pourquoi un fichier toto.txt a été créer n'ayant pour contenu que 0. \\
+
+La ligne de commande devient alors : \\
+
+\begin{lstlisting}
+python MRMultMat.py -r local --m1 ~/data/downloads/MRjob/mat1.csv --m2 ~/data/downloads/MRjob/mat2.csv < toto.txt
+\end{lstlisting}
+
+
 \subsection{k-means}
 
+Comment partitionner en trois ensembles de données, une liste de points en deux dimensions via un algorithme de k-means.
 
+\subsubsection{algorithme}
+
+Pour faire simple voici ce qu'en dit Wikipedia :\\
+
+\begin{quote}
+"L'algorithme des k-moyennes (ou K-means en anglais) est un algorithme de partitionnement de données relevant des statistiques et de l'apprentissage automatique (plus précisément de l'apprentissage non supervisé). C'est une méthode dont le but est de diviser des observations en K partitions (clusters) dans lesquelles chaque observation appartient à la partition avec la moyenne la plus proche."\\
+\end{quote}
+
+Soit un ensemble de point $X=(x_1,x_2, ...,x_n)$ où les $x_i$ représente les vecteurs d'observation de dimension $d$. L'algorithme cherche à minimiser la distance entre chaque point de chaque $k$ ensemble d'observations $S$.\\
+
+\begin{align}
+\underset{\mathbf{S}}{\operatorname{arg\,min}} \sum_{i=1}^{k} \sum_{\mathbf x_j \in S_i} \left\| \mathbf x_j - \boldsymbol\mu_i \right\|^2 
+\end{align}
+
+Où $\boldsymbol\mu_i$ est la moyenne des points dans $S_i$\\
+
+\subsubsection{Indications}
+
+Pour résoudre un algorithme k-means dans un cadre non BigData, il suffit d'une phase d'initialisation, permettant de choisir $k$-points aléatoirement qui seront nos centroïdes $\boldsymbol\mu_i$. Ensuite on applique une suite d'instructions tant qu'il n'y a pas convergence. Ces étapes sont, ccalculer pour chaque cluster les nouveaux centroïdes puis de vérifier pour chaque point à quelle cluster ils appartiennent.\\
+
+Cette algorithme ne nécessite que deux étapes :
+\begin{itemize}
+\item la labélisation de chaque point (à quelle cluste il appartient)
+\item le calcul de la moyenne des points.
+\end{itemize}
+
+Un autre point très important est la possibilité d'utiliser dans un programme Python la librairie numpy, extrement pratique, notemment pour calculer la distance entre vecteur.\\
+
+Maintenant en utilisant un langage plus MapReduce que nous donne ces deux étapes : 
+\begin{itemize}
+\item Pour chaque point : je calcul une distance avec tous les clusters dont je tirerais le minimum.
+\item Pour chaque point d'un cluster, je fait la moyenne.
+\end{itemize}
+
+L'utilisation des mapper et reducer et leurs entrées-sorties doivent vous guider vers une première étape (moyenne faite dans un seul réducer par exemple).\\
+
+De plus il faut apprendre à sauvegarder des valeurs (un compteur, une liste) entre les différentes étapes de votre class MRJob, pour cela il suffit de surcharger la méthod init de votre class pour pouvoir y rajouter des variables de classes:
+
+\begin{lstlisting}
+class MRKMeans(MRJob):
+
+	SORT_VALUES = True
+
+	def __init__(self, *args, **kwargs):
+		super(MRKMeans, self).__init__(*args, **kwargs)
+		old_centroids = []
+		new_centroid=[]
+\end{lstlisting}
+
+
+
+
+
+\subsubsection{Corrigé}
+
+ 
 
 
 
